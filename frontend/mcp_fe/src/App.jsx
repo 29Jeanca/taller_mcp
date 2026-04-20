@@ -5,14 +5,12 @@ function App() {
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const formatResponse = (data) => {
+  const formatoRespuesta = (data) => {
   
       return data
         .map(
           (p) =>
-            `${p.nombre_producto} - Stock: ${
-              p.cantidad_producto
-            }`
+            `${p.nombre_producto} - Stock: ${p.cantidad_producto}`
         )
         .join("\n");
   };
@@ -38,7 +36,7 @@ function App() {
 
       setChat([
         ...newChat,
-        { bot: formatResponse(data.reply) }
+        { bot: formatoRespuesta(data.reply) }
       ]);
 
     } catch {
