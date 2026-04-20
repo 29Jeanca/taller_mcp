@@ -16,22 +16,42 @@ const db = mysql.createPool({
   database: process.env.DB_NAME,
 });
 
-/* =========================
-   🔧 TOOLS (simuladas)
-========================= */
 const tools = {
-  getProducts: async () => {
+  traerProductos: async () => {
     const [rows] = await db.query("SELECT * FROM productos");
     return rows;
   },
 
-  getLowStock: async () => {
-    const [rows] = await db.query("SELECT * FROM productos WHERE cantidad_producto < 5");
+  traerProductosBajos: async () => {
+    const [rows] = await db.query(
+      "SELECT * FROM productos WHERE cantidad_producto < 5",
+    );
+    return rows;
+  },
+
+//   traerProductosAgotados: async () => {
+//     const [rows] = await db.query(
+//       "SELECT * FROM productos WHERE cantidad_producto = 0",
+//     );
+//     return rows;
+//   },
+//   traerProductosPorCategoria: async (categoria) => {
+//     const [rows] = await db.query(
+//       "SELECT * FROM productos WHERE categoria_producto = ?",
+//       [categoria],
+//     );
+//     return rows;
+//   },
+  traerProductosPorNombre: async ({ nombre }) => {
+    const [rows] = await db.query(
+      "SELECT * FROM productos WHERE nombre_producto LIKE ?",
+      [`%${nombre}%`],
+    );
     return rows;
   },
 };
 
-const askAI = async (message) => {
+const hablarIA = async (peticionUsuario) => {
   const response = await axios.post(
     process.env.AI_URL,
     {
@@ -46,7 +66,10 @@ Responde SOLO en JSON.
 
 Formato:
 {
-  "tool": "getProducts" | "getLowStock" | "none"
+  "tool": "traerProductos" | "traerProductosBajos" | "traerProductosAgotados" | "traerProductosPorCategoria" | "traerProductosPorNombre" | "none",
+  "input": {
+     "nombre": "string"
+  }
 }
 
 No escribas nada más.
@@ -54,7 +77,7 @@ No escribas nada más.
         },
         {
           role: "user",
-          content: message,
+          content: peticionUsuario,
         },
       ],
     },
@@ -69,21 +92,21 @@ No escribas nada más.
 };
 
 app.post("/chat", async (req, res) => {
-  const message = req.body?.message;
+  const peticionUsuario = req.body?.message;
 
-  if (!message) {
+  if (!peticionUsuario) {
     return res.json({ reply: "Escribe algo 😅" });
   }
 
   try {
-    const aiResponse = await askAI(message);
+    const respuestaIA = await hablarIA(peticionUsuario);
 
-    console.log("IA:", aiResponse);
+    console.log("IA:", respuestaIA);
 
     let action;
 
     try {
-      action = JSON.parse(aiResponse);
+      action = JSON.parse(respuestaIA);
     } catch {
       return res.json({
         reply: "La IA no respondió bien 😅",
@@ -100,11 +123,11 @@ app.post("/chat", async (req, res) => {
 
     if (!tool) {
       return res.json({
-        reply: "Tool no existe",
+        reply: "Acción desconocida",
       });
     }
 
-    const result = await tool();
+    const result = await tool(action.input || {});
 
     if (result.length === 0) {
       return res.json({
